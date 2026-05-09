@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -10,8 +10,16 @@ use crate::app::App;
 
 /// Renders the user interface.
 pub fn draw(f: &mut Frame, app: &App) {
-    let area = f.area();
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(2), // Header
+            Constraint::Length(2), // Connection tracking summary
+            Constraint::Min(0),    // Main content area
+        ])
+        .split(f.area());
 
+    // Header widget
     let version = env!("CARGO_PKG_VERSION");
 
     let uptime_secs = sysinfo::System::uptime();
@@ -40,12 +48,20 @@ pub fn draw(f: &mut Frame, app: &App) {
             .border_style(Style::default().fg(Color::DarkGray)),
     );
 
-    let header_area = Rect {
-        x: area.x,
-        y: area.y,
-        width: area.width,
-        height: 2,
-    };
+    f.render_widget(header, chunks[0]);
 
-    f.render_widget(header, header_area);
+    // Conntrack summary widget
+    let stats = &app.conntrack_stats;
+
+    let stats_text = format!(
+        "[ Total Connections: {} / {} ]    [ Hardware Offloaded: {} ]",
+        stats.total, stats.max, stats.hw_offloaded
+    );
+
+    let stats_widget = Paragraph::new(Line::from(vec![Span::styled(
+        stats_text,
+        Style::default().fg(Color::White),
+    )]));
+
+    f.render_widget(stats_widget, chunks[1]);
 }
