@@ -3,10 +3,12 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
 /// Indicates whether a flow is processed by the CPU or hardware offloaded.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OffloadStatus {
-    Cpu,
-    HwOffload,
+    None,        // CPU (Slow Path)
+    Software,    // Software Flow Offload
+    HardwarePpe, // Hardware Wired (PPE)
+    HardwareWed, // Hardware Wireless (WED)
 }
 
 /// Represents an active network connection entry.
@@ -64,29 +66,36 @@ pub fn get_stats() -> io::Result<ConntrackStats> {
         }
         Err(_) => {
             // Provide dummy data when /proc/net/nf_conntrack is unavailable (e.g., non-Linux environments).
-            total = 2;
-            hw_offloaded = 1;
+            total = 4;
+            hw_offloaded = 2;
 
             connections.push(Connection {
                 protocol: "tcp".to_string(),
                 src_ip: "192.168.1.15".to_string(),
                 dst_ip: "142.250.186.46".to_string(),
                 status: "ESTABLISHED".to_string(),
-                offload: OffloadStatus::HwOffload,
-            });
-            connections.push(Connection {
-                protocol: "tcp".to_string(),
-                src_ip: "192.168.1.15".to_string(),
-                dst_ip: "82.117.13.146".to_string(),
-                status: "ESTABLISHED".to_string(),
-                offload: OffloadStatus::HwOffload,
+                offload: OffloadStatus::HardwareWed,
             });
             connections.push(Connection {
                 protocol: "udp".to_string(),
                 src_ip: "192.168.1.50".to_string(),
-                dst_ip: "1.1.1.1".to_string(),
+                dst_ip: "104.16.124.96".to_string(),
+                status: "ASSURED".to_string(),
+                offload: OffloadStatus::HardwarePpe,
+            });
+            connections.push(Connection {
+                protocol: "tcp".to_string(),
+                src_ip: "192.168.1.100".to_string(),
+                dst_ip: "8.8.8.8".to_string(),
+                status: "TIME_WAIT".to_string(),
+                offload: OffloadStatus::Software,
+            });
+            connections.push(Connection {
+                protocol: "udp".to_string(),
+                src_ip: "192.168.1.1".to_string(),
+                dst_ip: "91.189.91.157".to_string(),
                 status: "UNREPLIED".to_string(),
-                offload: OffloadStatus::Cpu,
+                offload: OffloadStatus::None,
             });
         }
     }
@@ -132,10 +141,14 @@ fn parse_conntrack_line(line: &str, is_offloaded: bool) -> Option<Connection> {
         .map(|s| s.replace("dst=", ""))
         .unwrap_or_default();
 
-    let offload = if is_offloaded {
-        OffloadStatus::HwOffload
+    let offload = if is_offloaded || line.contains("[HW_OFFLOAD]") {
+        // Defaults to PPE (Wired) offloading. Reclassified to WED downstream if matched to a wireless interface.
+        OffloadStatus::HardwarePpe
+    } else if line.contains("[OFFLOAD]") {
+        // OpenWrt software flow offloading tag.
+        OffloadStatus::Software
     } else {
-        OffloadStatus::Cpu
+        OffloadStatus::None
     };
 
     Some(Connection {

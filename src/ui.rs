@@ -88,8 +88,10 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .iter()
         .map(|conn| {
             let (offload_str, offload_color) = match conn.offload {
-                OffloadStatus::HwOffload => ("[HW_OFFLOAD]", Color::Green),
-                OffloadStatus::Cpu => ("CPU", Color::Gray),
+                OffloadStatus::HardwareWed => ("HW (WED)", Color::Cyan),
+                OffloadStatus::HardwarePpe => ("HW (PPE)", Color::Green),
+                OffloadStatus::Software => ("SOFTWARE", Color::Yellow),
+                OffloadStatus::None => ("CPU", Color::DarkGray),
             };
 
             let cells = vec![
@@ -126,7 +128,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     )
     .row_highlight_style(
         Style::default()
-            .bg(Color::Blue)
+            .bg(Color::DarkGray)
             .fg(Color::White)
             .add_modifier(Modifier::BOLD),
     )
