@@ -76,13 +76,10 @@ pub fn get_stats() -> io::Result<ConntrackStats> {
                 let line = line?;
                 total += 1;
 
-                // Hardware-offloaded flows in OpenWrt/MediaTek kernels are tagged with [HW_OFFLOAD].
-                let is_offloaded = line.contains("[HW_OFFLOAD]");
-                if is_offloaded {
-                    hw_offloaded += 1;
-                }
-
-                if let Some(conn) = parse_conntrack_line(&line, is_offloaded) {
+                if let Some(conn) = parse_conntrack_line(&line) {
+                    if conn.offload == OffloadStatus::HardwarePpe {
+                        hw_offloaded += 1;
+                    }
                     connections.push(conn);
                 }
             }
@@ -131,10 +128,25 @@ pub fn get_stats() -> io::Result<ConntrackStats> {
     })
 }
 
-/// Parses a single line from `/proc/net/nf_conntrack`.
-fn parse_conntrack_line(line: &str, is_offloaded: bool) -> Option<Connection> {
-    let parts: Vec<&str> = line.split_whitespace().collect();
+/// Classifies the offload status of a conntrack line based on its status tags.
+///
+/// Hardware-offloaded flows in OpenWrt/MediaTek kernels are tagged with `[HW_OFFLOAD]`,
+/// while OpenWrt's software flow offloading uses the `[OFFLOAD]` tag.
+fn classify_offload(line: &str) -> OffloadStatus {
+    if line.contains("[HW_OFFLOAD]") {
+        // Defaults to PPE (Wired) offloading. Reclassified to WED downstream if matched to a wireless interface.
+        OffloadStatus::HardwarePpe
+    } else if line.contains("[OFFLOAD]") {
+        // OpenWrt software flow offloading tag.
+        OffloadStatus::Software
+    } else {
+        OffloadStatus::None
+    }
+}
 
+/// Parses a single line from `/proc/net/nf_conntrack`.
+fn parse_conntrack_line(line: &str) -> Option<Connection> {
+    let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 6 {
         return None;
     }
@@ -164,21 +176,11 @@ fn parse_conntrack_line(line: &str, is_offloaded: bool) -> Option<Connection> {
         .map(|s| s.replace("dst=", ""))
         .unwrap_or_default();
 
-    let offload = if is_offloaded || line.contains("[HW_OFFLOAD]") {
-        // Defaults to PPE (Wired) offloading. Reclassified to WED downstream if matched to a wireless interface.
-        OffloadStatus::HardwarePpe
-    } else if line.contains("[OFFLOAD]") {
-        // OpenWrt software flow offloading tag.
-        OffloadStatus::Software
-    } else {
-        OffloadStatus::None
-    };
-
     Some(Connection {
         protocol,
         src_ip,
         dst_ip,
         status,
-        offload,
+        offload: classify_offload(line),
     })
 }
