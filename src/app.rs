@@ -1,3 +1,4 @@
+use crate::accelerator::AccelerationStatus;
 use crate::conntrack::{self, ConntrackStats};
 use ratatui::widgets::TableState;
 use sysinfo::System;
@@ -6,6 +7,8 @@ use sysinfo::System;
 pub struct App {
     /// Indicates whether the application should exit.
     pub should_quit: bool,
+    /// System packet acceleration status detected at startup.
+    pub acc_status: AccelerationStatus,
     /// Collects system statistics.
     pub sys: System,
     /// Holds connection tracking statistics.
@@ -23,11 +26,14 @@ impl Default for App {
 impl App {
     /// Creates a new application state.
     pub fn new() -> Self {
+        let acc_status = AccelerationStatus::check_system();
+
         let mut table_state = TableState::default();
         table_state.select(Some(0));
 
         Self {
             should_quit: false,
+            acc_status,
             sys: System::new_all(),
             conntrack_stats: ConntrackStats::default(),
             table_state,

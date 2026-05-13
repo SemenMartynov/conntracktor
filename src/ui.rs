@@ -52,18 +52,48 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     f.render_widget(header, chunks[0]);
 
     // *** Conntrack summary widget ***
+    let acc = &app.acc_status;
+
+    let sw_color = if acc.software {
+        OffloadStatus::Software.color()
+    } else {
+        OffloadStatus::None.color()
+    };
+    let ppe_color = if acc.hw_ppe {
+        OffloadStatus::HardwarePpe.color()
+    } else {
+        OffloadStatus::None.color()
+    };
+    let wed_color = if acc.hw_wed {
+        OffloadStatus::HardwareWed.color()
+    } else {
+        OffloadStatus::None.color()
+    };
+
     let stats = &app.conntrack_stats;
+    let summary_line = Line::from(vec![
+        Span::raw(format!(
+            "[ Connections: {} / {} ]    [ Hardware Offloaded: {} ]    System Engines: [ ",
+            stats.total, stats.max, stats.hw_offloaded
+        )),
+        Span::styled(
+            if acc.software { "SW:ON" } else { "SW:OFF" },
+            Style::default().fg(sw_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" | "),
+        Span::styled(
+            if acc.hw_ppe { "PPE:ON" } else { "PPE:OFF" },
+            Style::default().fg(ppe_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" | "),
+        Span::styled(
+            if acc.hw_wed { "WED:ON" } else { "WED:OFF" },
+            Style::default().fg(wed_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" ]"),
+    ]);
 
-    let stats_text = format!(
-        "[ Total Connections: {} / {} ]    [ Hardware Offloaded: {} ]",
-        stats.total, stats.max, stats.hw_offloaded
-    );
-
-    let stats_widget = Paragraph::new(Line::from(vec![Span::styled(
-        stats_text,
-        Style::default().fg(Color::White),
-    )]));
-
+    let stats_widget = Paragraph::new(summary_line);
     f.render_widget(stats_widget, chunks[1]);
 
     // *** Active connections table widget ***
@@ -87,21 +117,14 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .connections
         .iter()
         .map(|conn| {
-            let (offload_str, offload_color) = match conn.offload {
-                OffloadStatus::HardwareWed => ("HW (WED)", Color::Cyan),
-                OffloadStatus::HardwarePpe => ("HW (PPE)", Color::Green),
-                OffloadStatus::Software => ("SOFTWARE", Color::Yellow),
-                OffloadStatus::None => ("CPU", Color::DarkGray),
-            };
-
             let cells = vec![
                 Cell::from(conn.protocol.to_uppercase()),
                 Cell::from(conn.src_ip.clone()),
                 Cell::from(conn.dst_ip.clone()),
                 Cell::from(conn.status.clone()),
-                Cell::from(offload_str).style(
+                Cell::from(conn.offload.label()).style(
                     Style::default()
-                        .fg(offload_color)
+                        .fg(conn.offload.color())
                         .add_modifier(Modifier::BOLD),
                 ),
             ];

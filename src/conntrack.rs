@@ -1,3 +1,4 @@
+use ratatui::style::Color;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -9,6 +10,28 @@ pub enum OffloadStatus {
     Software,    // Software Flow Offload
     HardwarePpe, // Hardware Wired (PPE)
     HardwareWed, // Hardware Wireless (WED)
+}
+
+impl OffloadStatus {
+    /// Returns the UI display color associated with the offload type.
+    pub fn color(&self) -> Color {
+        match self {
+            OffloadStatus::HardwareWed => Color::Cyan,
+            OffloadStatus::HardwarePpe => Color::Green,
+            OffloadStatus::Software => Color::Yellow,
+            OffloadStatus::None => Color::DarkGray,
+        }
+    }
+
+    /// Returns the label representation for the UI.
+    pub fn label(&self) -> &'static str {
+        match self {
+            OffloadStatus::HardwareWed => "HW (WED)",
+            OffloadStatus::HardwarePpe => "HW (PPE)",
+            OffloadStatus::Software => "SOFTWARE",
+            OffloadStatus::None => "CPU",
+        }
+    }
 }
 
 /// Represents an active network connection entry.

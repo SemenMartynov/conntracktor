@@ -28,7 +28,7 @@ Developed for **MediaTek Filogic (MT798x)** SoCs, but shoud work on any OpenWrt 
 ```text
 🚜 Conntracktor v0.1.0 | Uptime: 2d 4h | CPU: 2% | RAM: 215/1024 MB
 -------------------------------------------------------------------------
-[ Total Connections: 412 / 16384 ]    [ Hardware Offloaded: 380 ]
+[ Connections: 384 / 63488 ]    [ Hardware Offloaded: 0 ]    System Engines: [ SW:OFF | PPE:ON | WED:ON ]
   
 Distribution:
 Router Local: [■■                  ]  12  (3%)
