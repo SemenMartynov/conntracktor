@@ -1,6 +1,7 @@
 mod accelerator;
 mod app;
 mod conntrack;
+mod topology;
 mod ui;
 
 use anyhow::Result;

@@ -1,3 +1,4 @@
+use crate::topology::{EndpointType, Topology};
 use ratatui::style::Color;
 use std::fs;
 use std::fs::File;
@@ -39,7 +40,9 @@ impl OffloadStatus {
 pub struct Connection {
     pub protocol: String,
     pub src_ip: String,
+    pub src_type: EndpointType,
     pub dst_ip: String,
+    pub dst_type: EndpointType,
     pub status: String,
     pub offload: OffloadStatus,
 }
@@ -55,7 +58,7 @@ pub struct ConntrackStats {
 }
 
 /// Reads connection tracking statistics from sysfs/procfs.
-pub fn get_stats() -> io::Result<ConntrackStats> {
+pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
     // Read the maximum connection limit, falling back to a default if unavailable.
     let max_str = fs::read_to_string("/proc/sys/net/netfilter/nf_conntrack_max")
         .unwrap_or_else(|_| "16384".to_string());
@@ -76,7 +79,7 @@ pub fn get_stats() -> io::Result<ConntrackStats> {
                 let line = line?;
                 total += 1;
 
-                if let Some(conn) = parse_conntrack_line(&line) {
+                if let Some(conn) = parse_conntrack_line(&line, topology) {
                     if conn.offload == OffloadStatus::HardwarePpe {
                         hw_offloaded += 1;
                     }
@@ -92,28 +95,36 @@ pub fn get_stats() -> io::Result<ConntrackStats> {
             connections.push(Connection {
                 protocol: "tcp".to_string(),
                 src_ip: "192.168.1.15".to_string(),
+                src_type: EndpointType::Wireless,
                 dst_ip: "142.250.186.46".to_string(),
+                dst_type: EndpointType::Remote,
                 status: "ESTABLISHED".to_string(),
                 offload: OffloadStatus::HardwareWed,
             });
             connections.push(Connection {
                 protocol: "udp".to_string(),
                 src_ip: "192.168.1.50".to_string(),
+                src_type: EndpointType::Wireless,
                 dst_ip: "104.16.124.96".to_string(),
+                dst_type: EndpointType::Remote,
                 status: "ASSURED".to_string(),
                 offload: OffloadStatus::HardwarePpe,
             });
             connections.push(Connection {
                 protocol: "tcp".to_string(),
                 src_ip: "192.168.1.100".to_string(),
+                src_type: EndpointType::Wired,
                 dst_ip: "8.8.8.8".to_string(),
+                dst_type: EndpointType::Remote,
                 status: "TIME_WAIT".to_string(),
                 offload: OffloadStatus::Software,
             });
             connections.push(Connection {
                 protocol: "udp".to_string(),
                 src_ip: "192.168.1.1".to_string(),
+                src_type: EndpointType::Wireless,
                 dst_ip: "91.189.91.157".to_string(),
+                dst_type: EndpointType::Remote,
                 status: "UNREPLIED".to_string(),
                 offload: OffloadStatus::None,
             });
@@ -145,7 +156,7 @@ fn classify_offload(line: &str) -> OffloadStatus {
 }
 
 /// Parses a single line from `/proc/net/nf_conntrack`.
-fn parse_conntrack_line(line: &str) -> Option<Connection> {
+fn parse_conntrack_line(line: &str, topology: &Topology) -> Option<Connection> {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 6 {
         return None;
@@ -169,17 +180,21 @@ fn parse_conntrack_line(line: &str) -> Option<Connection> {
         .find(|&&p| p.starts_with("src="))
         .map(|s| s.replace("src=", ""))
         .unwrap_or_default();
+    let src_type = topology.get_type(&src_ip);
 
     let dst_ip = parts
         .iter()
         .find(|&&p| p.starts_with("dst="))
         .map(|s| s.replace("dst=", ""))
         .unwrap_or_default();
+    let dst_type = topology.get_type(&dst_ip);
 
     Some(Connection {
         protocol,
         src_ip,
+        src_type,
         dst_ip,
+        dst_type,
         status,
         offload: classify_offload(line),
     })

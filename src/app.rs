@@ -1,5 +1,6 @@
 use crate::accelerator::AccelerationStatus;
 use crate::conntrack::{self, ConntrackStats};
+use crate::topology::Topology;
 use ratatui::widgets::TableState;
 use sysinfo::System;
 
@@ -11,6 +12,8 @@ pub struct App {
     pub acc_status: AccelerationStatus,
     /// Collects system statistics.
     pub sys: System,
+    /// Tracks network topology and endpoint classifications.
+    pub topology: Topology,
     /// Holds connection tracking statistics.
     pub conntrack_stats: ConntrackStats,
     /// State for table selection and navigation.
@@ -34,6 +37,7 @@ impl App {
         Self {
             should_quit: false,
             acc_status,
+            topology: Topology::new(),
             sys: System::new_all(),
             conntrack_stats: ConntrackStats::default(),
             table_state,
@@ -46,7 +50,7 @@ impl App {
         self.sys.refresh_memory();
 
         // Fall back to default stats if fetching fails (e.g., non-Linux platform).
-        self.conntrack_stats = conntrack::get_stats().unwrap_or_default();
+        self.conntrack_stats = conntrack::get_stats(&self.topology).unwrap_or_default();
 
         // Adjust selection index if the connection count decreased below the current selection.
         if let Some(selected) = self.table_state.selected() {

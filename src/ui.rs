@@ -119,8 +119,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .map(|conn| {
             let cells = vec![
                 Cell::from(conn.protocol.to_uppercase()),
-                Cell::from(conn.src_ip.clone()),
-                Cell::from(conn.dst_ip.clone()),
+                Cell::from(format!("{} {}", conn.src_type.icon(), conn.src_ip)),
+                Cell::from(format!("{} {}", conn.dst_type.icon(), conn.dst_ip)),
                 Cell::from(conn.status.clone()),
                 Cell::from(conn.offload.label()).style(
                     Style::default()
@@ -137,8 +137,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         rows,
         [
             Constraint::Length(7),  // PROTO
-            Constraint::Length(16), // SRC IP
-            Constraint::Length(16), // DST IP
+            Constraint::Min(22),    // SRC IP (fit the icon + IPv6)
+            Constraint::Min(22),    // DST IP (fit the icon + IPv6)
             Constraint::Length(15), // STATUS
             Constraint::Min(15),    // OFFLOAD
         ],
