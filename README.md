@@ -3,7 +3,7 @@
 **A blazingly fast, Rust-based TUI connection monitor for OpenWrt, specializing in MediaTek Hardware Offloading (PPE & WED) analytics.**
 
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![OpenWrt](https://img.shields.io/badge/OpenWrt-23.05%2B-blue.svg)](https://openwrt.org/)
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-25.12%2B-blue.svg)](https://openwrt.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Conntracktor** is a lightweight Terminal User Interface (TUI) utility designed for modern OpenWrt routers. While standard tools like `top` only show CPU usage, they completely miss the massive amount of traffic being processed by hardware accelerators. Conntracktor looks under the hood of `netfilter` to show you exactly what connections are active, where they are coming from, and whether they are bypassing the CPU via hardware offloading.
@@ -42,13 +42,68 @@ LAN   | 192.168.1.50    | 104.16.124.96   | UDP   | ASSURED     | [HW_OFFLOAD]
 Local | 192.168.1.1     | 91.189.91.157   | UDP   | UNREPLIED   | CPU
 ```
 
+## ⚙️ MediaTek Hardware Acceleration (PPE & WED)
 
-## 🧠 How it Works
+Modern MediaTek Filogic (MT798x) SoCs include two independent hardware acceleration engines that dramatically reduce CPU utilization during packet forwarding. Although they are often mentioned together, **PPE** and **WED** solve different problems and operate independently.
 
-1. Parses `/proc/net/nf_conntrack` to get raw connection data and offload flags.
-2. Reads `/proc/net/arp` to map active IP addresses to MAC addresses.
-3. Queries `bridge fdb show` to map MAC addresses to physical interfaces (e.g., `lan1`, `phy0-ap0`).
-4. Uses this mapping to categorize the source of each connection and verify if the MediaTek WED (Wireless Ethernet Dispatcher) is handling the Wi-Fi traffic.
+### Packet Processing Engine (PPE)
+
+The **Packet Processing Engine (PPE)** is a dedicated hardware accelerator responsible for forwarding established network flows without traversing the full Linux networking stack.
+
+After the first packets of a connection are processed by the kernel (connection tracking, firewall, NAT, routing, etc.), compatible flows can be offloaded into the PPE through Linux `nftables` flowtables. Once offloaded, subsequent packets are forwarded almost entirely in hardware.
+
+PPE accelerates:
+
+- IPv4 routing
+- NAT
+- PPPoE
+- VLAN forwarding
+- Checksum calculation
+- Long-lived TCP/UDP flows
+
+In addition, the hardware is capable of supporting:
+
+- bridge forwarding
+- multicast forwarding
+- hardware flow aging
+- packet classification
+- ACLs
+- QoS/traffic prioritization
+
+Support for these advanced capabilities depends on the Linux driver and OpenWrt implementation.
+
+### Wireless Ethernet Dispatcher (WED)
+
+The **Wireless Ethernet Dispatcher (WED)** is a dedicated accelerator for the Wi-Fi data path.
+
+Unlike the PPE, WED **does not** perform routing, NAT, firewalling or packet inspection. Its only responsibility is to accelerate packet movement between the Wi-Fi subsystem, DMA engines and the rest of the networking pipeline.
+
+WED improves performance by:
+
+- reducing interrupt frequency
+- managing RX/TX DMA rings
+- accelerating descriptor processing
+- recycling packet buffers
+- optimizing DMA queue handling
+- improving burst traffic handling
+- reducing CPU cache pressure
+
+The result is significantly lower CPU utilization while maintaining high Wi-Fi throughput.
+
+### How They Work Together
+
+Although completely independent hardware blocks, PPE and WED complement each other.
+
+For Wi-Fi to Ethernet traffic:
+
+1. WED accelerates packet movement inside the wireless subsystem.
+2. Linux processes only the first packets required to establish a flow.
+3. The flow is installed into the PPE.
+4. All subsequent packets bypass most of the Linux networking stack.
+
+This architecture enables MediaTek Filogic routers to sustain near wire-speed routing while keeping CPU utilization extremely low.
+
+---
 
 ## 🚀 Installation & Building
 
