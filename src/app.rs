@@ -122,15 +122,27 @@ impl App {
 
     /// Jumps up by one visible page in the connections table ('PageUp').
     pub fn page_up(&mut self) {
-        if self.conntrack_stats.connections.is_empty() {
+        let count = self.conntrack_stats.connections.len();
+        if count == 0 {
             self.table_state.select(None);
             return;
         }
-        let i = match self.table_state.selected() {
-            Some(i) => i.saturating_sub(self.page_size),
-            None => 0,
-        };
-        self.table_state.select(Some(i));
+
+        let current_offset = self.table_state.offset();
+        let current_selected = self.table_state.selected().unwrap_or(0);
+        let relative_pos = current_selected.saturating_sub(current_offset);
+
+        if current_offset == 0 {
+            // the first screen
+            self.table_state.select(Some(0));
+            *self.table_state.offset_mut() = 0;
+        } else {
+            // one screen up
+            let new_offset = current_offset.saturating_sub(self.page_size);
+
+            *self.table_state.offset_mut() = new_offset;
+            self.table_state.select(Some(new_offset + relative_pos));
+        }
     }
 
     /// Jumps down by one visible page in the connections table ('PageDown').
@@ -140,10 +152,24 @@ impl App {
             self.table_state.select(None);
             return;
         }
-        let i = match self.table_state.selected() {
-            Some(i) => std::cmp::min(i.saturating_add(self.page_size), count.saturating_sub(1)),
-            None => 0,
-        };
-        self.table_state.select(Some(i));
+
+        let current_offset = self.table_state.offset();
+        let current_selected = self.table_state.selected().unwrap_or(0);
+
+        let relative_pos = current_selected.saturating_sub(current_offset);
+        let max_offset = count.saturating_sub(self.page_size);
+
+        if current_offset >= max_offset {
+            // the last screen
+            self.table_state.select(Some(count.saturating_sub(1)));
+            *self.table_state.offset_mut() = max_offset;
+        } else {
+            // one screent down
+            let new_offset = std::cmp::min(current_offset + self.page_size, max_offset);
+            *self.table_state.offset_mut() = new_offset;
+
+            let new_selected = std::cmp::min(new_offset + relative_pos, count.saturating_sub(1));
+            self.table_state.select(Some(new_selected));
+        }
     }
 }
