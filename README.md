@@ -26,20 +26,30 @@ Developed for **MediaTek Filogic (MT798x)** SoCs, but shoud work on any OpenWrt 
 ## 📸 Interface (Mockup)
 
 ```text
-🚜 Conntracktor v0.1.0 | Uptime: 2d 4h | CPU: 2% | RAM: 215/1024 MB
--------------------------------------------------------------------------
-[ Connections: 384 / 63488 ]    [ Hardware Offloaded: 0 ]    System Engines: [ SW:OFF | PPE:ON | WED:ON ]
-  
-Distribution:
-Router Local: [■■                  ]  12  (3%)
-LAN Clients : [■■■■■■■■■           ]  150 (36%)
-Wi-Fi (WED) : [■■■■■■■■■■■■■■■■    ]  250 (61%)
-
-Top Active Connections:
-TYPE  | SOURCE IP       | DESTINATION IP  | PROTO | STATUS      | OFFLOAD
-Wi-Fi | 192.168.1.15    | 142.250.186.46  | TCP   | ESTABLISHED | [HW_OFFLOAD]
-LAN   | 192.168.1.50    | 104.16.124.96   | UDP   | ASSURED     | [HW_OFFLOAD]
-Local | 192.168.1.1     | 91.189.91.157   | UDP   | UNREPLIED   | CPU
+┌─ 🚜 Conntracktor v0.1.0 ─────────────────────────────────────────────────────────────┐
+│ OpenWRT │ OpenWrt 25.12-SNAPSHOT │ Uptime: 0d 14h | CPU: 10% | RAM: 366/986 MB       │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+┌─ MT7986AV (Filogic 830) — Engines: [SW:ON] [PPE:ON] [WED:ON] ────────────────────────┐
+│  PPE0:      15234/32768 [█████████░░░]    WED0(2.4G):  512/2048  [█████████████░░░]  │
+│  PPE1:      28192/32768 [████████░░░░]    WED1(5G):   1892/2048  [███████████░░░░░]  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+┌ Active Connections — 374/63488 total, 11 HW offloaded, 12 HW offloaded ──────────────┐
+│   PROTO SOURCE IP              DESTINATION IP         STATUS          OFFLOAD        │
+│                                                                                      │
+│>> UDP   🖧  168.27.134.47       🌐 221.298.97.183                      CPU           │
+│   UDP   🖧  168.27.134.47       🌐 5.79.78.211                         CPU           │
+│   UDP   📶 192.168.1.30        📶 192.168.1.116                       CPU            │
+│   TCP   🌐 18.146.193.61       🖧  168.27.134.47       ESTABLISHED     CPU           │
+│   UDP   🌐 37.16.72.197        🖧  168.27.134.47                       CPU           │
+│   UDP   🌐 142.51.63.179       🖧  168.27.134.47                       CPU           │
+│   UDP   🌐 65.38.65.161        🖧  168.27.134.47                       CPU           │
+│   UDP   🌐 16.119.112.248      🖧  168.27.134.47                       CPU           │
+│   TCP   📶 192.168.1.96        🌐 87.58.147.204       dst=87.58.147.2 HW (PPE)       │
+│   UDP   📶 192.168.1.116       📶 192.168.1.30                        SOFTWARE       │
+│   UDP   🌐 185.168.238.27      🖧  168.27.134.47                       CPU           │
+│   UDP   🌐 54.32.177.27        🖧  168.27.134.47                       CPU           │
+│   UDP   🌐 14.135.142.7        🖧  168.27.134.47                       CPU           │
+└──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## ⚙️ MediaTek Hardware Acceleration (PPE & WED)
