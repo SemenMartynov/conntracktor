@@ -18,6 +18,8 @@ pub struct App {
     pub conntrack_stats: ConntrackStats,
     /// State for table selection and navigation.
     pub table_state: TableState,
+    /// How many rows are visible in the table (used for page up/down).
+    pub page_size: usize,
 }
 
 impl Default for App {
@@ -41,6 +43,7 @@ impl App {
             sys: System::new_all(),
             conntrack_stats: ConntrackStats::default(),
             table_state,
+            page_size: 10,
         }
     }
 
@@ -93,6 +96,52 @@ impl App {
                     i - 1
                 }
             }
+            None => 0,
+        };
+        self.table_state.select(Some(i));
+    }
+
+    /// Selects the first item in the connections table (equivalent to 'gg' or Home).
+    pub fn first(&mut self) {
+        if self.conntrack_stats.connections.is_empty() {
+            self.table_state.select(None);
+        } else {
+            self.table_state.select(Some(0));
+        }
+    }
+
+    /// Selects the last item in the connections table (equivalent to 'G' or End).
+    pub fn last(&mut self) {
+        let count = self.conntrack_stats.connections.len();
+        if count == 0 {
+            self.table_state.select(None);
+        } else {
+            self.table_state.select(Some(count - 1));
+        }
+    }
+
+    /// Jumps up by one visible page in the connections table ('PageUp').
+    pub fn page_up(&mut self) {
+        if self.conntrack_stats.connections.is_empty() {
+            self.table_state.select(None);
+            return;
+        }
+        let i = match self.table_state.selected() {
+            Some(i) => i.saturating_sub(self.page_size),
+            None => 0,
+        };
+        self.table_state.select(Some(i));
+    }
+
+    /// Jumps down by one visible page in the connections table ('PageDown').
+    pub fn page_down(&mut self) {
+        let count = self.conntrack_stats.connections.len();
+        if count == 0 {
+            self.table_state.select(None);
+            return;
+        }
+        let i = match self.table_state.selected() {
+            Some(i) => std::cmp::min(i.saturating_add(self.page_size), count.saturating_sub(1)),
             None => 0,
         };
         self.table_state.select(Some(i));

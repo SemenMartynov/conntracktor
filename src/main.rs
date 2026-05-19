@@ -6,7 +6,7 @@ mod ui;
 
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -66,9 +66,33 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
+                    // Basic vertical navigation
                     KeyCode::Down | KeyCode::Char('j') => app.next(),
                     KeyCode::Up | KeyCode::Char('k') => app.previous(),
+
+                    // Jump to top (Home or 'g')
+                    KeyCode::Home | KeyCode::Char('g') => app.first(),
+                    // Jump to bottom (End or 'G')
+                    KeyCode::End | KeyCode::Char('G') => app.last(),
+
+                    // Page up (PageUp, Ctrl+b, or Ctrl+u)
+                    KeyCode::PageUp => app.page_up(),
+                    KeyCode::Char('b') | KeyCode::Char('u')
+                        if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        app.page_up()
+                    }
+                    // Page down (PageDown, Ctrl+f, or Ctrl+d)
+                    KeyCode::PageDown => app.page_down(),
+                    KeyCode::Char('f') | KeyCode::Char('d')
+                        if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        app.page_down()
+                    }
+
+                    // Quit application
                     KeyCode::Esc | KeyCode::Char('q') => app.quit(),
+
                     _ => {}
                 }
             }

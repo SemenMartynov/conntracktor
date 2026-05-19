@@ -157,5 +157,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     )
     .highlight_symbol(">> ");
 
+    // Dynamically calculate the page size based on the available layout area:
+    // `chunks[2].height` represents the total height of the table area.
+    // - 2 rows are allocated for the top and bottom borders (Borders::ALL).
+    // - 2 rows are allocated for the table header (height 1 + bottom_margin 1).
+    // We utilize the remaining space for rows, ensuring a minimum of 1 visible row.
+    app.page_size = chunks[2].height.saturating_sub(4).max(1) as usize;
+
     f.render_stateful_widget(table, chunks[2], &mut app.table_state);
 }
