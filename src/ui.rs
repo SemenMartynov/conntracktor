@@ -14,7 +14,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(2), // Header
+            // Header requires 3 lines: top border, content, bottom border
+            Constraint::Length(3),
             Constraint::Length(2), // Connection tracking summary
             Constraint::Min(0),    // Active connections table
         ])
@@ -22,6 +23,18 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     // *** Header widget ***
     let version = env!("CARGO_PKG_VERSION");
+
+    let hostname = sysinfo::System::host_name().unwrap_or_else(|| "Unknown".to_string());
+    let os_version = sysinfo::System::long_os_version()
+        .map(|s| {
+            // Extract the OS distribution release string enclosed in parentheses.
+            if let (Some(start), Some(end)) = (s.find('('), s.rfind(')')) {
+                s[start + 1..end].to_string()
+            } else {
+                s
+            }
+        })
+        .unwrap_or_else(|| "Unknown OS".to_string());
 
     let uptime_secs = sysinfo::System::uptime();
     let days = uptime_secs / 86400;
@@ -33,8 +46,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let total_ram_mb = app.sys.total_memory() / 1024 / 1024;
 
     let header_text = format!(
-        "🚜 Conntracktor v{} | Uptime: {}d {}h | CPU: {:.0}% | RAM: {}/{} MB",
-        version, days, hours, cpu_usage, used_ram_mb, total_ram_mb
+        " {} | {} | Uptime: {}d {}h | CPU: {:.0}% | RAM: {}/{} MB",
+        hostname, os_version, days, hours, cpu_usage, used_ram_mb, total_ram_mb
     );
 
     let header = Paragraph::new(Line::from(vec![Span::styled(
@@ -45,7 +58,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     )]))
     .block(
         Block::default()
-            .borders(Borders::BOTTOM)
+            .borders(Borders::ALL)
+            .title(format!("🚜 Conntracktor v{}", version))
             .border_style(Style::default().fg(Color::DarkGray)),
     );
 
