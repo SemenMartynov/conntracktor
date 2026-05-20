@@ -24,30 +24,15 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     // *** Header widget ***
     let version = env!("CARGO_PKG_VERSION");
 
-    let hostname = sysinfo::System::host_name().unwrap_or_else(|| "Unknown".to_string());
-    let os_version = sysinfo::System::long_os_version()
-        .map(|s| {
-            // Extract the OS distribution release string enclosed in parentheses.
-            if let (Some(start), Some(end)) = (s.find('('), s.rfind(')')) {
-                s[start + 1..end].to_string()
-            } else {
-                s
-            }
-        })
-        .unwrap_or_else(|| "Unknown OS".to_string());
-
-    let uptime_secs = sysinfo::System::uptime();
-    let days = uptime_secs / 86400;
-    let hours = (uptime_secs % 86400) / 3600;
-
-    let cpu_usage = app.sys.global_cpu_usage();
-
-    let used_ram_mb = app.sys.used_memory() / 1024 / 1024;
-    let total_ram_mb = app.sys.total_memory() / 1024 / 1024;
-
     let header_text = format!(
         " {} | {} | Uptime: {}d {}h | CPU: {:.0}% | RAM: {}/{} MB",
-        hostname, os_version, days, hours, cpu_usage, used_ram_mb, total_ram_mb
+        app.host_info.hostname,
+        app.host_info.os_version,
+        app.system_stats.uptime_days,
+        app.system_stats.uptime_hours,
+        app.system_stats.cpu_usage,
+        app.system_stats.used_ram_mb,
+        app.system_stats.total_ram_mb,
     );
 
     let header = Paragraph::new(Line::from(vec![Span::styled(

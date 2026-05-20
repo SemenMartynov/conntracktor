@@ -4,10 +4,31 @@ use crate::topology::Topology;
 use ratatui::widgets::TableState;
 use sysinfo::System;
 
+/// Contains static host identifires that do not change during runtime.
+#[derive(Default, Debug, Clone)]
+pub struct HostInfo {
+    pub hostname: String,
+    pub os_version: String,
+}
+
+/// Contains dynamic system performance metric updated periodically.
+#[derive(Default, Debug, Clone)]
+pub struct SystemStats {
+    pub uptime_days: u64,
+    pub uptime_hours: u64,
+    pub cpu_usage: f32,
+    pub used_ram_mb: u64,
+    pub total_ram_mb: u64,
+}
+
 /// Application state.
 pub struct App {
     /// Indicates whether the application should exit.
     pub should_quit: bool,
+    /// Static host information (hostname, OS release).
+    pub host_info: HostInfo,
+    /// Dynamic hardware statistics (CPU, RAM, Uptime).
+    pub system_stats: SystemStats,
     /// System packet acceleration status detected at startup.
     pub acc_status: AccelerationStatus,
     /// Collects system statistics.
@@ -31,14 +52,14 @@ impl Default for App {
 impl App {
     /// Creates a new application state.
     pub fn new() -> Self {
-        let acc_status = AccelerationStatus::check_system();
-
         let mut table_state = TableState::default();
         table_state.select(Some(0));
 
         Self {
             should_quit: false,
-            acc_status,
+            host_info: HostInfo::default(),
+            system_stats: SystemStats::default(),
+            acc_status: AccelerationStatus::default(),
             topology: Topology::new(),
             sys: System::new_all(),
             conntrack_stats: ConntrackStats::default(),
@@ -47,10 +68,42 @@ impl App {
         }
     }
 
+    /// initializes system component and reads static environment data.
+    pub fn init(&mut self) {
+        self.acc_status = AccelerationStatus::check_system();
+
+        let hostname = System::host_name().unwrap_or_else(|| "Unknown".to_string());
+
+        let os_version = System::long_os_version()
+            .map(|s| {
+                if let (Some(start), Some(end)) = (s.find('('), s.rfind(')')) {
+                    s[start + 1..end].to_string()
+                } else {
+                    s
+                }
+            })
+            .unwrap_or_else(|| "Unknown OS".to_string());
+
+        self.host_info = HostInfo {
+            hostname,
+            os_version,
+        }
+    }
+
     /// Updates the application state. Called on every tick of the event loop.
     pub fn on_tick(&mut self) {
+        // Refresh CPU and memory hardware metrics.
         self.sys.refresh_cpu_usage();
         self.sys.refresh_memory();
+
+        // Calculate and format system statistics for the UI view.
+        let uptime_secs = System::uptime();
+        self.system_stats.uptime_days = uptime_secs / 86400;
+        self.system_stats.uptime_hours = (uptime_secs % 86400) / 3600;
+
+        self.system_stats.cpu_usage = self.sys.global_cpu_usage();
+        self.system_stats.used_ram_mb = self.sys.used_memory() / 1024 / 1024;
+        self.system_stats.total_ram_mb = self.sys.total_memory() / 1024 / 1024;
 
         // Fall back to default stats if fetching fails (e.g., non-Linux platform).
         self.conntrack_stats = conntrack::get_stats(&self.topology).unwrap_or_default();

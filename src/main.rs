@@ -19,7 +19,10 @@ fn main() -> Result<()> {
     setup_terminal()?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+
+    // Construct and init the application state.
     let mut app = App::new();
+    app.init();
 
     // Catch the result of the event loop to ensure the terminal is always restored,
     // even if an error occurs during execution.
