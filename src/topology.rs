@@ -22,7 +22,7 @@ impl EndpointType {
     pub fn icon(&self) -> &'static str {
         match self {
             Self::Router => "🖧 ",
-            Self::Wired => "💻",
+            Self::Wired => "🖥️",
             Self::Wireless => "📶",
             Self::Vpn => "🛡️",
             Self::Remote => "🌐",

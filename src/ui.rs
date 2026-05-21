@@ -11,13 +11,19 @@ use crate::conntrack::OffloadStatus;
 
 /// Renders the user interface.
 pub fn draw(f: &mut Frame, app: &mut App) {
+    // Determine the dynamic height of the engines panel based on the hardware capabilities.
+    // E.g., MT7986 has up to 2 engines, requiring 2 lines of content + 2 lines for top/bottom borders.
+    let soc = &app.host_info.soc_model;
+    let max_engine_lines = std::cmp::max(soc.ppe_count(), soc.wed_count()).max(1) as u16;
+    let engines_panel_height = max_engine_lines + 2;
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             // Header requires 3 lines: top border, content, bottom border
             Constraint::Length(3),
-            Constraint::Length(2), // Connection tracking summary
-            Constraint::Min(0),    // Active connections table
+            Constraint::Length(engines_panel_height), // Dynamic engines status panel
+            Constraint::Min(0),                       // Active connections table
         ])
         .split(f.area());
 
@@ -50,7 +56,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     f.render_widget(header, chunks[0]);
 
-    // *** Conntrack summary widget ***
+    // *** Engines Status Panel Widget ***
     let acc = &app.acc_status;
 
     let sw_color = if acc.software {
@@ -69,33 +75,42 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         OffloadStatus::None.color()
     };
 
-    let stats = &app.conntrack_stats;
-    let summary_line = Line::from(vec![
-        Span::raw(format!(
-            "[ Connections: {} / {} ]    [ Hardware Offloaded: {} ]    System Engines: [ ",
-            stats.total, stats.max, stats.hw_offloaded
-        )),
+    // Construct a multi-colored title for the engines panel.
+    let engines_title_line = Line::from(vec![
+        Span::raw(format!(" {} — Engines: [", soc.display_name())),
         Span::styled(
             if acc.software { "SW:ON" } else { "SW:OFF" },
             Style::default().fg(sw_color).add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" | "),
+        Span::raw("] ["),
         Span::styled(
             if acc.hw_ppe { "PPE:ON" } else { "PPE:OFF" },
             Style::default().fg(ppe_color).add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" | "),
+        Span::raw("] ["),
         Span::styled(
             if acc.hw_wed { "WED:ON" } else { "WED:OFF" },
             Style::default().fg(wed_color).add_modifier(Modifier::BOLD),
         ),
-        Span::raw(" ]"),
+        Span::raw("] "),
     ]);
 
-    let stats_widget = Paragraph::new(summary_line);
-    f.render_widget(stats_widget, chunks[1]);
+    // The inner content will be implemented later!!
+    let engines_panel = Paragraph::new("").block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(engines_title_line),
+    );
+
+    f.render_widget(engines_panel, chunks[1]);
 
     // *** Active connections table widget ***
+    let stats = &app.conntrack_stats;
+    let table_title = format!(
+        " Active Connections [ {} / {} ] (HW Offloaded: {}) ",
+        stats.total, stats.max, stats.hw_offloaded
+    );
+
     let header_cells = ["PROTO", "SOURCE IP", "DESTINATION IP", "STATUS", "OFFLOAD"]
         .iter()
         .map(|h| {
@@ -143,11 +158,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         ],
     )
     .header(header_row)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Active Connections "),
-    )
+    .block(Block::default().borders(Borders::ALL).title(table_title))
     .row_highlight_style(
         Style::default()
             .bg(Color::DarkGray)

@@ -1,18 +1,20 @@
 use crate::accelerator::AccelerationStatus;
 use crate::conntrack::{self, ConntrackStats};
+use crate::soc::SocModel;
 use crate::topology::Topology;
 use ratatui::widgets::TableState;
 use sysinfo::System;
 
 /// Contains static host identifires that do not change during runtime.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct HostInfo {
     pub hostname: String,
     pub os_version: String,
+    pub soc_model: SocModel,
 }
 
 /// Contains dynamic system performance metric updated periodically.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct SystemStats {
     pub uptime_days: u64,
     pub uptime_hours: u64,
@@ -70,12 +72,15 @@ impl App {
 
     /// initializes system component and reads static environment data.
     pub fn init(&mut self) {
+        // Fetch hardware acceleration status (e.g., executing `nft` commands).
         self.acc_status = AccelerationStatus::check_system();
 
+        // Retrieve static host information.
         let hostname = System::host_name().unwrap_or_else(|| "Unknown".to_string());
 
         let os_version = System::long_os_version()
             .map(|s| {
+                // Extract the OS distribution release string enclosed in parentheses.
                 if let (Some(start), Some(end)) = (s.find('('), s.rfind(')')) {
                     s[start + 1..end].to_string()
                 } else {
@@ -84,10 +89,14 @@ impl App {
             })
             .unwrap_or_else(|| "Unknown OS".to_string());
 
+        // Detect the hardware System on Chip (SoC) model.
+        let soc_model = SocModel::detect();
+
         self.host_info = HostInfo {
             hostname,
             os_version,
-        }
+            soc_model,
+        };
     }
 
     /// Updates the application state. Called on every tick of the event loop.
