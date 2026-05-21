@@ -8,3 +8,9 @@ anyhow = "1.0.104"
 crossterm = "0.29.0"
 ratatui = "0.30.2"
 sysinfo = "0.39.6"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
