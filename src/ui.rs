@@ -66,12 +66,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         OffloadStatus::None.color()
     };
     let ppe_color = if acc.hw_ppe {
-        OffloadStatus::HardwarePpe.color()
+        OffloadStatus::Hardware.color()
     } else {
         OffloadStatus::None.color()
     };
     let wed_color = if acc.hw_wed {
-        OffloadStatus::HardwareWed.color()
+        Color::Cyan
     } else {
         OffloadStatus::None.color()
     };

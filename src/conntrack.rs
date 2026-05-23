@@ -5,21 +5,20 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
 /// Indicates whether a flow is processed by the CPU or hardware offloaded.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum OffloadStatus {
-    None,        // CPU (Slow Path)
-    Software,    // Software Flow Offload
-    HardwarePpe, // Hardware Wired (PPE)
-    HardwareWed, // Hardware Wireless (WED)
+    Software, // Software Flow Offload
+    Hardware, // Hardware Offload (PPE)
+    #[default]
+    None, // CPU (Slow Path)
 }
 
 impl OffloadStatus {
     /// Returns the UI display color associated with the offload type.
     pub fn color(&self) -> Color {
         match self {
-            OffloadStatus::HardwareWed => Color::Cyan,
-            OffloadStatus::HardwarePpe => Color::Green,
             OffloadStatus::Software => Color::Yellow,
+            OffloadStatus::Hardware => Color::Green,
             OffloadStatus::None => Color::DarkGray,
         }
     }
@@ -27,9 +26,8 @@ impl OffloadStatus {
     /// Returns the label representation for the UI.
     pub fn label(&self) -> &'static str {
         match self {
-            OffloadStatus::HardwareWed => "HW (WED)",
-            OffloadStatus::HardwarePpe => "HW (PPE)",
             OffloadStatus::Software => "SOFTWARE",
+            OffloadStatus::Hardware => "HW (PPE)",
             OffloadStatus::None => "CPU",
         }
     }
@@ -80,7 +78,7 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
                 total += 1;
 
                 if let Some(conn) = parse_conntrack_line(&line, topology) {
-                    if conn.offload == OffloadStatus::HardwarePpe {
+                    if conn.offload == OffloadStatus::Hardware {
                         hw_offloaded += 1;
                     }
                     connections.push(conn);
@@ -99,7 +97,7 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
                 dst_ip: "142.250.186.46".to_string(),
                 dst_type: EndpointType::Remote,
                 status: "ESTABLISHED".to_string(),
-                offload: OffloadStatus::HardwareWed,
+                offload: OffloadStatus::Hardware,
             });
             connections.push(Connection {
                 protocol: "udp".to_string(),
@@ -108,7 +106,7 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
                 dst_ip: "104.16.124.96".to_string(),
                 dst_type: EndpointType::Remote,
                 status: "ASSURED".to_string(),
-                offload: OffloadStatus::HardwarePpe,
+                offload: OffloadStatus::Hardware,
             });
             connections.push(Connection {
                 protocol: "tcp".to_string(),
@@ -145,8 +143,8 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
 /// while OpenWrt's software flow offloading uses the `[OFFLOAD]` tag.
 fn classify_offload(line: &str) -> OffloadStatus {
     if line.contains("[HW_OFFLOAD]") {
-        // Defaults to PPE (Wired) offloading. Reclassified to WED downstream if matched to a wireless interface.
-        OffloadStatus::HardwarePpe
+        // Hardware offloaded to the PPE.
+        OffloadStatus::Hardware
     } else if line.contains("[OFFLOAD]") {
         // OpenWrt software flow offloading tag.
         OffloadStatus::Software
