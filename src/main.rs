@@ -70,6 +70,9 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
+                    // Togle help popup
+                    KeyCode::Char('?') => app.toggle_help(),
+
                     // Basic vertical navigation
                     KeyCode::Down | KeyCode::Char('j') => app.next(),
                     KeyCode::Up | KeyCode::Char('k') => app.previous(),
@@ -95,7 +98,13 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
                     }
 
                     // Quit application
-                    KeyCode::Esc | KeyCode::Char('q') => app.quit(),
+                    KeyCode::Esc | KeyCode::Char('q') => {
+                        if app.show_help {
+                            app.toggle_help();
+                        } else {
+                            app.quit();
+                        }
+                    }
 
                     _ => {}
                 }

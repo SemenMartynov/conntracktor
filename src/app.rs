@@ -27,6 +27,8 @@ pub struct SystemStats {
 pub struct App {
     /// Indicates whether the application should exit.
     pub should_quit: bool,
+    /// Indicates wheter the help popup shod be displayed.
+    pub show_help: bool,
     /// Static host information (hostname, OS release).
     pub host_info: HostInfo,
     /// Dynamic hardware statistics (CPU, RAM, Uptime).
@@ -59,6 +61,7 @@ impl App {
 
         Self {
             should_quit: false,
+            show_help: false,
             host_info: HostInfo::default(),
             system_stats: SystemStats::default(),
             acc_status: AccelerationStatus::default(),
@@ -128,9 +131,9 @@ impl App {
         }
     }
 
-    /// Signals the application to exit.
-    pub fn quit(&mut self) {
-        self.should_quit = true;
+    /// Toggle the help visualization
+    pub fn toggle_help(&mut self) {
+        self.show_help = !self.show_help;
     }
 
     /// Selects the next item in the connections table.
@@ -233,5 +236,10 @@ impl App {
             let new_selected = std::cmp::min(new_offset + relative_pos, count.saturating_sub(1));
             self.table_state.select(Some(new_selected));
         }
+    }
+
+    /// Signals the application to exit.
+    pub fn quit(&mut self) {
+        self.should_quit = true;
     }
 }

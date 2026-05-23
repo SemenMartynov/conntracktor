@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
 };
 
 use crate::app::App;
@@ -31,7 +31,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let version = env!("CARGO_PKG_VERSION");
 
     let header_text = format!(
-        " {} | {} | Uptime: {}d {}h | CPU: {:.0}% | RAM: {}/{} MB",
+        " {} │ {} │ Uptime: {}d {}h │ CPU: {:.0}% │ RAM: {}/{} MB ",
         app.host_info.hostname,
         app.host_info.os_version,
         app.system_stats.uptime_days,
@@ -50,8 +50,9 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!("🚜 Conntracktor v{}", version))
-            .border_style(Style::default().fg(Color::DarkGray)),
+            .border_style(Style::default().fg(Color::DarkGray))
+            .title(format!(" 🚜 Conntracktor v{} ", version))
+            .title(Line::from(" [ press ? for help ] ").right_aligned()),
     );
 
     f.render_widget(header, chunks[0]);
@@ -175,4 +176,43 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     app.page_size = chunks[2].height.saturating_sub(4).max(1) as usize;
 
     f.render_stateful_widget(table, chunks[2], &mut app.table_state);
+
+    // *** Help Popup Widget ***
+    if app.show_help {
+        let popup_area = centered_rect(50, 50, f.area());
+
+        f.render_widget(Clear, popup_area);
+
+        let popup_block = Block::default()
+            .title(" Help ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan));
+
+        let popup_text = Paragraph::new("\n   (Help content will be here...)")
+            .block(popup_block)
+            .style(Style::default().fg(Color::White));
+
+        f.render_widget(popup_text, popup_area);
+    }
+}
+
+/// Helper function to create the popup window.
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }

@@ -28,8 +28,8 @@
 
 Main interface
 ```text
-┌─ 🚜 Conntracktor v0.1.0 ─────────────────────────────────────────────────────────────┐
-│ OpenWRT │ OpenWrt 25.12 │ Uptime: 0d 14h | CPU: 10% | RAM: 366/986 MB |      press ? │
+┌ 🚜 Conntracktor v0.1.0 ──────────────────────────────────────── [ press ? for help ] ┐
+│ OpenWrt │ OpenWrt 25.12-snapshot │ Uptime: 2d 12h │ CPU: 2% │ RAM: 370/986 MB        │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ┌ Active Connections [ 421 / 63488 ] ── [CPU: 262] [SW: 150] [PPE: 9] ─────────────────┐
 │   PROTO SOURCE IP              DESTINATION IP         STATUS          OFFLOAD        │
