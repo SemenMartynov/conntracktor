@@ -31,7 +31,7 @@ Main interface
 ┌ 🚜 Conntracktor v0.1.0 ──────────────────────────────────────── [ press ? for help ] ┐
 │ OpenWrt │ OpenWrt 25.12-snapshot │ Uptime: 2d 12h │ CPU: 2% │ RAM: 370/986 MB        │
 └──────────────────────────────────────────────────────────────────────────────────────┘
-┌ Active Connections [ 421 / 63488 ] ── [CPU: 262] [SW: 150] [PPE: 9] ─────────────────┐
+┌ Active Connections [ 544 / 63488 ] ─────────────────────[CPU: 510] [SW: 7] [PPE: 27] ┐
 │   PROTO SOURCE IP              DESTINATION IP         STATUS          OFFLOAD        │
 │                                                                                      │
 │>> UDP   🖧  168.27.134.47       🌐 221.298.97.183                      CPU           │

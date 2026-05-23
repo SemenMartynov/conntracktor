@@ -50,7 +50,9 @@ pub struct Connection {
 pub struct ConntrackStats {
     pub total: u32,
     pub max: u32,
-    pub hw_offloaded: u32,
+    pub cpu: u32,
+    pub software: u32,
+    pub hardware: u32,
     /// Parsed list of active connections.
     pub connections: Vec<Connection>,
 }
@@ -66,7 +68,9 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
     let file = File::open("/proc/net/nf_conntrack");
 
     let mut total = 0;
-    let mut hw_offloaded = 0;
+    let mut cpu = 0;
+    let mut software = 0;
+    let mut hardware = 0;
     let mut connections = Vec::new();
 
     match file {
@@ -78,8 +82,10 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
                 total += 1;
 
                 if let Some(conn) = parse_conntrack_line(&line, topology) {
-                    if conn.offload == OffloadStatus::Hardware {
-                        hw_offloaded += 1;
+                    match conn.offload {
+                        OffloadStatus::None => cpu += 1,
+                        OffloadStatus::Software => software += 1,
+                        OffloadStatus::Hardware => hardware += 1,
                     }
                     connections.push(conn);
                 }
@@ -88,7 +94,9 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
         Err(_) => {
             // Provide dummy data when /proc/net/nf_conntrack is unavailable (e.g., non-Linux environments).
             total = 4;
-            hw_offloaded = 2;
+            cpu = 1;
+            software = 1;
+            hardware = 2;
 
             connections.push(Connection {
                 protocol: "tcp".to_string(),
@@ -132,7 +140,9 @@ pub fn get_stats(topology: &Topology) -> io::Result<ConntrackStats> {
     Ok(ConntrackStats {
         total,
         max,
-        hw_offloaded,
+        cpu,
+        software,
+        hardware,
         connections,
     })
 }

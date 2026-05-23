@@ -107,10 +107,34 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     // *** Active connections table widget ***
     let stats = &app.conntrack_stats;
-    let table_title = format!(
-        " Active Connections [ {} / {} ] (HW Offloaded: {}) ",
-        stats.total, stats.max, stats.hw_offloaded
-    );
+
+    let title_left = format!(" Active Connections [ {} / {} ] ", stats.total, stats.max);
+
+    let title_right = Line::from(vec![
+        Span::raw("[CPU: "),
+        Span::styled(
+            stats.cpu.to_string(),
+            Style::default()
+                .fg(OffloadStatus::None.color())
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("] [SW: "),
+        Span::styled(
+            stats.software.to_string(),
+            Style::default()
+                .fg(OffloadStatus::Software.color())
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("] [PPE: "),
+        Span::styled(
+            stats.hardware.to_string(),
+            Style::default()
+                .fg(OffloadStatus::Hardware.color())
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("] "),
+    ])
+    .right_aligned();
 
     let header_cells = ["PROTO", "SOURCE IP", "DESTINATION IP", "STATUS", "OFFLOAD"]
         .iter()
@@ -159,7 +183,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         ],
     )
     .header(header_row)
-    .block(Block::default().borders(Borders::ALL).title(table_title))
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title_left)
+            .title(title_right),
+    )
     .row_highlight_style(
         Style::default()
             .bg(Color::DarkGray)
