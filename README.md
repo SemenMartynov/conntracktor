@@ -52,10 +52,21 @@ Main interface
 
 Other panels
 ```text
-┌─ Hardware ───────────────────────────────────────────────────────────────────────────┐
-│ SoC: MediaTek MT7986AV (Filogic 830)                                                 │
-│ CPU: 2 cores @ 1300 MHz                                                              │
-│ Features: PPE ✓  WED ✓  RSS ✗  Crypto ✓                                              │
+┌─ Hardware ────────────────────── [ Hardware support only. Software may be disabled ] ┐
+│ SoC            MediaTek MT7986AV (Filogic 830)                                       │
+│ CPU            2× Cortex-A53 @ 1300 MHz                                              │
+│ Memory         1 GB DDR4 @ 3200 MT/s                                                 │
+│ Switch         Airoha AN8855 @ 2.5G Gbps                                             │
+│ Flash          FORESEE F35SQA001G (eMMC)                                             │
+│ Misc           USB 3.2 Gen1 (5G)                                                     │
+│                                                                                      │
+│ Networking                             Security                                      │
+│   PPE                ✓                   Crypto Engine     ✓                         │
+│   WED                ✓                   AES               ✓                         │
+│   RSS                ✗                   SHA               ✓                         │
+│   Checksum Offload   ✓                   TRNG              ✓                         │
+│   TSO                ✓                   Secure Boot       ✓                         │
+│   Multi RX Queues    ✗                   TrustZone (TEE)   ✓                         │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ┌─ Packet Pipeline ────────────────────────────────────────────────────────────────────┐
 │ Hardware offload:                                                                    │

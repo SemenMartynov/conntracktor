@@ -3,27 +3,42 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Clear, Padding, Paragraph, Row, Table},
 };
 
 use crate::app::App;
 use crate::conntrack::OffloadStatus;
 
+/// Column width used when formatting hardware specification labels (SoC, CPU, Memory, ...).
+const SPEC_LABEL_WIDTH: usize = 18;
+/// Column width used when formatting capability feature labels (PPE, RSS, AES, ...).
+const FEATURE_LABEL_WIDTH: usize = 18;
+
+/// Builds a standard bordered section block
+fn section_block<'a>(title: impl Into<Line<'a>>, hint: Option<Line<'a>>) -> Block<'a> {
+    let mut block = Block::default()
+        .borders(Borders::ALL)
+        .padding(Padding::horizontal(1))
+        .border_style(Style::default().fg(Color::DarkGray))
+        .title(title.into());
+
+    if let Some(hint) = hint {
+        block = block.title(hint.right_aligned());
+    }
+
+    block
+}
+
 /// Renders the user interface.
 pub fn draw(f: &mut Frame, app: &mut App) {
-    // Determine the dynamic height of the engines panel based on the hardware capabilities.
-    // E.g., MT7986 has up to 2 engines, requiring 2 lines of content + 2 lines for top/bottom borders.
-    let soc = &app.host_info.soc_model;
-    let max_engine_lines = std::cmp::max(soc.ppe_count(), soc.wed_count()).max(1) as u16;
-    let engines_panel_height = max_engine_lines + 2;
-
+    // Layout constraints
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             // Header requires 3 lines: top border, content, bottom border
             Constraint::Length(3),
-            Constraint::Length(engines_panel_height), // Dynamic engines status panel
-            Constraint::Min(0),                       // Active connections table
+            Constraint::Length(16), // Hardware Panel Widget
+            Constraint::Min(0),     // Active connections table
         ])
         .split(f.area());
 
@@ -31,7 +46,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let version = env!("CARGO_PKG_VERSION");
 
     let header_text = format!(
-        " {} │ {} │ Uptime: {}d {}h │ CPU: {:.0}% │ RAM: {}/{} MB ",
+        "{} │ {} │ Uptime: {}d {}h │ CPU: {:.0}% │ RAM: {}/{} MB",
         app.host_info.hostname,
         app.host_info.os_version,
         app.system_stats.uptime_days,
@@ -47,63 +62,165 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
     )]))
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::DarkGray))
-            .title(format!(" 🚜 Conntracktor v{} ", version))
-            .title(Line::from(" [ press ? for help ] ").right_aligned()),
-    );
+    .block(section_block(
+        format!(" 🚜 Conntracktor v{} ", version),
+        Some(Line::from(" [ press ? for help ] ")),
+    ));
 
     f.render_widget(header, chunks[0]);
 
-    // *** Engines Status Panel Widget ***
-    let acc = &app.acc_status;
+    // *** Hardware Panel Widget ***
+    let hw = &app.hardware_info;
 
-    let sw_color = if acc.software {
-        OffloadStatus::Software.color()
-    } else {
-        OffloadStatus::None.color()
-    };
-    let ppe_color = if acc.hw_ppe {
-        OffloadStatus::Hardware.color()
-    } else {
-        OffloadStatus::None.color()
-    };
-    let wed_color = if acc.hw_wed {
-        Color::Cyan
-    } else {
-        OffloadStatus::None.color()
-    };
-
-    // Construct a multi-colored title for the engines panel.
-    let engines_title_line = Line::from(vec![
-        Span::raw(format!(" {} — Engines: [", soc.display_name())),
-        Span::styled(
-            if acc.software { "SW:ON" } else { "SW:OFF" },
-            Style::default().fg(sw_color).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("] ["),
-        Span::styled(
-            if acc.hw_ppe { "PPE:ON" } else { "PPE:OFF" },
-            Style::default().fg(ppe_color).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("] ["),
-        Span::styled(
-            if acc.hw_wed { "WED:ON" } else { "WED:OFF" },
-            Style::default().fg(wed_color).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("] "),
-    ]);
-
-    // The inner content will be implemented later!!
-    let engines_panel = Paragraph::new("").block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(engines_title_line),
+    let hardware_block = section_block(
+        " Hardware ",
+        Some(Line::from(
+            " [ Hardware only. Software support may be disabled ] ",
+        )),
     );
 
-    f.render_widget(engines_panel, chunks[1]);
+    let inner_area = hardware_block.inner(chunks[1]);
+    f.render_widget(hardware_block, chunks[1]);
+
+    // Split the inner hardware panel into sub-sections:
+    // 6 rows (specifications), 1 blank line, 1 row (feature section headers), 6 rows (capability indicators)
+    let hw_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(6),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(6),
+        ])
+        .split(inner_area);
+
+    // Hardware specifications
+    let spec_lines = vec![
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "SoC",
+            hw.display_soc()
+        ))]),
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "CPU",
+            hw.display_cpu()
+        ))]),
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "Memory",
+            hw.display_ram()
+        ))]),
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "Switch", hw.switch
+        ))]),
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "Flash", hw.flash
+        ))]),
+        Line::from(vec![Span::raw(format!(
+            "{:<SPEC_LABEL_WIDTH$} {}",
+            "Misc", hw.misc
+        ))]),
+    ];
+    f.render_widget(Paragraph::new(spec_lines), hw_chunks[0]);
+
+    // Feature section headers (Networking & Security)
+    let header_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(hw_chunks[2]);
+
+    f.render_widget(
+        Paragraph::new(Span::styled(
+            "Networking",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
+        header_chunks[0],
+    );
+    f.render_widget(
+        Paragraph::new(Span::styled(
+            "Security",
+            Style::default().add_modifier(Modifier::BOLD),
+        )),
+        header_chunks[1],
+    );
+
+    // Capability feature matrix
+    let feat_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(hw_chunks[3]);
+
+    let net_lines = vec![
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "PPE",
+            hw.display_ppe_count()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "WED",
+            hw.display_wed_count()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "RSS",
+            hw.display_rss()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "Checksum Offload",
+            hw.display_checksum_offload()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "TSO",
+            hw.display_tso()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "Multi RX Queues",
+            hw.display_multi_rx()
+        )),
+    ];
+
+    let sec_lines = vec![
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "Crypto Engine",
+            hw.display_crypto_engine()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "AES",
+            hw.display_aes()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "SHA",
+            hw.display_sha()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "TRNG",
+            hw.display_trng()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "Secure Boot",
+            hw.display_secure_boot()
+        )),
+        Line::from(format!(
+            "  {:<FEATURE_LABEL_WIDTH$} {}",
+            "TrustZone (TEE)",
+            hw.display_trustzone()
+        )),
+    ];
+
+    f.render_widget(Paragraph::new(net_lines), feat_chunks[0]);
+    f.render_widget(Paragraph::new(sec_lines), feat_chunks[1]);
 
     // *** Active connections table widget ***
     let stats = &app.conntrack_stats;
@@ -133,8 +250,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw("] "),
-    ])
-    .right_aligned();
+    ]);
 
     let header_cells = ["PROTO", "SOURCE IP", "DESTINATION IP", "STATUS", "OFFLOAD"]
         .iter()
@@ -183,12 +299,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         ],
     )
     .header(header_row)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title_left)
-            .title(title_right),
-    )
+    .block(section_block(title_left, Some(title_right)))
     .row_highlight_style(
         Style::default()
             .bg(Color::DarkGray)
@@ -227,7 +338,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
 /// Helper function to create the popup window.
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
+    let popup_v_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Percentage((100 - percent_y) / 2),
@@ -236,12 +347,14 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(r);
 
-    Layout::default()
+    let popup_h_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage((100 - percent_x) / 2),
             Constraint::Percentage(percent_x),
             Constraint::Percentage((100 - percent_x) / 2),
         ])
-        .split(popup_layout[1])[1]
+        .split(popup_v_chunks[1]);
+
+    popup_h_chunks[1]
 }

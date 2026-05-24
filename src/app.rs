@@ -1,6 +1,6 @@
 use crate::accelerator::AccelerationStatus;
 use crate::conntrack::{self, ConntrackStats};
-use crate::soc::SocModel;
+use crate::hardware::HardwareInfo;
 use crate::topology::Topology;
 use ratatui::widgets::TableState;
 use sysinfo::System;
@@ -10,7 +10,6 @@ use sysinfo::System;
 pub struct HostInfo {
     pub hostname: String,
     pub os_version: String,
-    pub soc_model: SocModel,
 }
 
 /// Contains dynamic system performance metric updated periodically.
@@ -35,6 +34,8 @@ pub struct App {
     pub system_stats: SystemStats,
     /// System packet acceleration status detected at startup.
     pub acc_status: AccelerationStatus,
+    /// Hardware capabilities and platform feature flags.
+    pub hardware_info: HardwareInfo,
     /// Collects system statistics.
     pub sys: System,
     /// Tracks network topology and endpoint classifications.
@@ -65,6 +66,7 @@ impl App {
             host_info: HostInfo::default(),
             system_stats: SystemStats::default(),
             acc_status: AccelerationStatus::default(),
+            hardware_info: HardwareInfo::default(),
             topology: Topology::new(),
             sys: System::new_all(),
             conntrack_stats: ConntrackStats::default(),
@@ -77,6 +79,9 @@ impl App {
     pub fn init(&mut self) {
         // Fetch hardware acceleration status (e.g., executing `nft` commands).
         self.acc_status = AccelerationStatus::check_system();
+
+        // Inspect system hardware capabilities.
+        self.hardware_info = HardwareInfo::detect();
 
         // Retrieve static host information.
         let hostname = System::host_name().unwrap_or_else(|| "Unknown".to_string());
@@ -92,13 +97,9 @@ impl App {
             })
             .unwrap_or_else(|| "Unknown OS".to_string());
 
-        // Detect the hardware System on Chip (SoC) model.
-        let soc_model = SocModel::detect();
-
         self.host_info = HostInfo {
             hostname,
             os_version,
-            soc_model,
         };
     }
 
