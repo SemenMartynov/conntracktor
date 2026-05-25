@@ -83,7 +83,7 @@ impl SocModel {
     }
 
     /// Parses the CPU microarchitecture from `/proc/cpuinfo` output.
-    pub fn parse_cpu_arch_from_cpuinfo(cpuinfo: &str) -> Option<&'static str> {
+    pub(super) fn parse_cpu_arch_from_cpuinfo(cpuinfo: &str) -> Option<&'static str> {
         // Helper: strip optional 0x/0X prefix and parse as hex u16.
         let parse_hex_u16 = |value: &str| -> Option<u16> {
             let hex = value

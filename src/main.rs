@@ -1,8 +1,6 @@
-mod accelerator;
 mod app;
 mod conntrack;
-mod hardware;
-mod soc;
+mod platform;
 mod topology;
 mod ui;
 

@@ -1,6 +1,5 @@
-use crate::accelerator::AccelerationStatus;
 use crate::conntrack::{self, ConntrackStats};
-use crate::hardware::HardwareInfo;
+use crate::platform::{AccelerationStatus, HardwareInfo};
 use crate::topology::Topology;
 use ratatui::widgets::TableState;
 use sysinfo::System;

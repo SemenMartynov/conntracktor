@@ -1,4 +1,4 @@
-use crate::soc::SocModel;
+use super::SocModel;
 use std::fs;
 use std::path::Path;
 use sysinfo::{CpuRefreshKind, Networks, RefreshKind, System};
