@@ -8,7 +8,22 @@
 
 **Conntracktor** is a lightweight Terminal User Interface (TUI) utility designed for modern OpenWrt routers. While standard tools like `top` only show CPU usage, they completely miss the massive amount of traffic being processed by hardware accelerators. Conntracktor looks under the hood of `netfilter` to show you exactly what connections are active, where they are coming from, and whether they are bypassing the CPU via hardware offloading.
 
-**Compatibility:** Developed and thoroughly tested on the **MediaTek MT7981 (Filogic 820)**, but includes full dynamic support for the broader MediaTek family: **MT7986 (Filogic 830)**, **MT7988 (Filogic 880)**, and legacy **MT7621 (MIPS)** routers. It also gracefully falls back to standard software metrics on any generic OpenWrt device supporting `nf_conntrack`.
+**Compatibility:** Developed and thoroughly tested on the **MediaTek MT7981 (Filogic 820)**, with full dynamic support for the broader MediaTek family via Device Tree detection:
+
+**Filogic (modern ARM):**
+* MT7988 (Filogic 880, Wi-Fi 7)
+* MT7987 (Filogic 850, Wi-Fi 7 entry)
+* MT7986 (Filogic 830, Wi-Fi 6/6E)
+* MT7981 (Filogic 820, Wi-Fi 6)
+* MT7622 (Filogic 800, Wi-Fi 6 / early ARM)
+
+**Legacy:**
+* MT7629 (Wi-Fi 5)
+* MT7621 (Wi-Fi 5 / MIPS)
+* MT7628 (Wi-Fi 4/5 budget)
+* MT7620 (Wi-Fi 4/5 budget)
+
+It also gracefully falls back to standard software metrics on any generic OpenWrt device supporting `nf_conntrack`.
 
 ## ✨ Features
 

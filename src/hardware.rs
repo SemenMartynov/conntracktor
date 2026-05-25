@@ -235,15 +235,30 @@ impl HardwareInfo {
         }
     }
 
-    /// Detects CPU microarchitecture, falling back to SoC static properties.
+    /// Detects CPU microarchitecture, utilizing sysinfo, SoC knowledge base, and generic sysfs fallback.
     fn detect_cpu_arch(sys: &System, cpuinfo: &str, soc: &SocModel) -> String {
         sys.cpus()
             .first()
             .map(|cpu| cpu.brand().trim())
             .filter(|brand| !brand.is_empty() && !brand.to_lowercase().contains("unknown"))
             .map(String::from)
-            .or_else(|| Self::parse_cpu_architecture_from_cpuinfo(cpuinfo))
+            // Delegate domain-specific hardware part matching to the SoC module
+            .or_else(|| SocModel::parse_cpu_arch_from_cpuinfo(cpuinfo).map(String::from))
+            // Fallback to generic Linux cpuinfo string extraction
+            .or_else(|| Self::parse_generic_cpu_model(cpuinfo))
+            // Ultimate fallback to static SoC properties
             .unwrap_or_else(|| soc.architecture().to_string())
+    }
+
+    /// Helper method to extract a generic CPU model name from `/proc/cpuinfo`.
+    fn parse_generic_cpu_model(cpuinfo: &str) -> Option<String> {
+        cpuinfo
+            .lines()
+            .find(|l| l.starts_with("model name") || l.starts_with("Hardware"))
+            .and_then(|line| line.split_once(':'))
+            .map(|(_, name)| name.trim())
+            .filter(|name| !name.is_empty() && !name.to_lowercase().contains("unknown"))
+            .map(String::from)
     }
 
     /// Fast frequency detection pipeline prioritizing Common Clock Framework (CCF).
@@ -280,30 +295,6 @@ impl HardwareInfo {
         }
 
         None // Frequency is unknown dynamically
-    }
-
-    /// Helper method to identify CPU microarchitecture from /proc/cpuinfo ARM PART codes.
-    fn parse_cpu_architecture_from_cpuinfo(cpuinfo: &str) -> Option<String> {
-        let known_parts = [
-            ("CPU part\t: 0xd03", "Cortex-A53"),
-            ("CPU part\t: 0xd08", "Cortex-A73"),
-            ("CPU part\t: 0xd0b", "Cortex-A76"),
-            ("MIPS", "MIPS"),
-        ];
-
-        for (pattern, arch) in known_parts {
-            if cpuinfo.contains(pattern) {
-                return Some(arch.to_string());
-            }
-        }
-
-        cpuinfo
-            .lines()
-            .find(|l| l.starts_with("model name") || l.starts_with("Hardware"))
-            .and_then(|line| line.split_once(':'))
-            .map(|(_, name)| name.trim())
-            .filter(|name| !name.is_empty() && !name.to_lowercase().contains("unknown"))
-            .map(String::from)
     }
 
     /// Detects system RAM capacity in Megabytes (MB).
