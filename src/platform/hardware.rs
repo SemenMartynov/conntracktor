@@ -170,8 +170,16 @@ impl HardwareInfo {
         if let Ok(content) = fs::read_to_string("/sys/kernel/debug/clk/clk_summary") {
             for line in content.lines().skip(2) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 5 && TARGET_CLOCKS.contains(&parts[0]) {
-                    if let Ok(hz) = parts[4].parse::<u64>() {
+                if !parts.is_empty() && TARGET_CLOCKS.contains(&parts[0]) {
+                    // Find the first number in the line (skipping the clock name) that
+                    // resembles a valid frequency (i.e., >= 100 MHz / 100_000_000 Hz).
+                    // This makes the parsing robust against column shifts across different Linux kernel versions.
+                    if let Some(hz) = parts
+                        .iter()
+                        .skip(1)
+                        .filter_map(|s| s.parse::<u64>().ok())
+                        .find(|&val| val >= 100_000_000)
+                    {
                         let mhz = hz / 1_000_000;
                         if mhz >= MIN_VALID_CPU_FREQ_MHZ {
                             return Some(mhz);
@@ -223,9 +231,37 @@ impl HardwareInfo {
             if let Ok(entries) = fs::read_dir(path) {
                 for entry in entries.flatten() {
                     let file_name = entry.file_name().to_string_lossy().to_lowercase();
-                    // Example: "15100000.wed" or "mtk_wed"
-                    if file_name.contains(keyword) {
-                        found += 1;
+                    let file_name_str = file_name.as_str();
+
+                    // Extract the base device name by stripping out memory addresses.
+                    let core_name = if let Some((name, _addr)) = file_name_str.split_once('@') {
+                        // Devicetree format: "wed@15010000" -> "wed"
+                        name
+                    } else if let Some((addr, name)) = file_name_str.split_once('.') {
+                        // Platform bus format: "15010000.wed" -> "wed"
+                        // Ensure the prefix consists only of hex digits to prevent false positives.
+                        if addr.chars().all(|c| c.is_ascii_hexdigit()) {
+                            name
+                        } else {
+                            file_name_str
+                        }
+                    } else {
+                        // Legacy drivers fallback (e.g., "mtk_wed")
+                        file_name_str
+                    };
+
+                    // Strip the vendor prefix (if present).
+                    let trimmed = core_name.trim_start_matches("mtk_");
+
+                    // Strict match verification.
+                    // Ensure the string starts with the target keyword (e.g., "wed").
+                    if trimmed.starts_with(keyword) {
+                        let remainder = &trimmed[keyword.len()..];
+                        // The remainder of the string must either be empty ("wed") or consist solely of digits ("wed0", "ppe1").
+                        // This effectively filters out false matches like "wed_pcie".
+                        if remainder.is_empty() || remainder.chars().all(|c| c.is_ascii_digit()) {
+                            found += 1;
+                        }
                     }
                 }
             }
