@@ -97,30 +97,6 @@ impl HardwareInfo {
         self.soc.display_name().to_string()
     }
 
-    /// Assembles CPU information into a human-readable string.
-    /// Appends a red exclamation mark (❗) if an overclock/underclock is detected.
-    pub fn display_cpu(&self) -> String {
-        let mut output = if self.cpu_arch.contains('×') {
-            self.cpu_arch.clone() // Prevents "4× 4× Cortex-A73"
-        } else {
-            format!("{}× {}", self.cpu_cores, self.cpu_arch)
-        };
-
-        if let Some(freq) = self.cpu_freq_mhz {
-            output.push_str(&format!(" @ {} MHz", freq));
-
-            let expected_mhz = self.soc.core_frequency_hz() / 1_000_000;
-            // Modified status is calculated dynamically during presentation
-            let is_modified = expected_mhz > 0 && freq != expected_mhz;
-
-            if is_modified {
-                output.push_str(" ❗");
-            }
-        }
-
-        output
-    }
-
     /// Assembles RAM information into a human-readable string.
     pub fn display_ram(&self) -> String {
         match (self.memory_mb, self.memory_freq_mhz) {
@@ -128,95 +104,6 @@ impl HardwareInfo {
             (Some(mb), None) => format!("{mb} MB"),
             (None, _) => String::new(),
         }
-    }
-
-    // ========================================================================
-    // Networking Features Display
-    // ========================================================================
-
-    /// Returns the number of Packet Processing Engines (PPE) with a warning if it deviates from SoC spec.
-    pub fn display_ppe_count(&self) -> String {
-        Self::format_value(self.ppe_count, self.soc.ppe_count())
-    }
-
-    /// Returns the number of Wireless Ethernet Dispatchers (WED) with a warning if it deviates from SoC spec.
-    pub fn display_wed_count(&self) -> String {
-        Self::format_value(self.wed_count, self.soc.wed_count())
-    }
-
-    /// Returns whether Receive Side Scaling (RSS) is active/supported.
-    pub fn display_rss(&self) -> String {
-        Self::format_bool(self.rss, self.soc.has_rss())
-    }
-
-    /// Returns whether Checksum Offload is active/supported.
-    pub fn display_checksum_offload(&self) -> String {
-        Self::format_bool(self.checksum_offload, self.soc.has_checksum_offload())
-    }
-
-    /// Returns whether TCP Segmentation Offload (TSO) is active/supported.
-    pub fn display_tso(&self) -> String {
-        Self::format_bool(self.tso, self.soc.has_tso())
-    }
-
-    /// Returns whether multi-queue RX is active/supported.
-    pub fn display_multi_rx(&self) -> String {
-        Self::format_bool(self.multi_rx, self.soc.has_multi_rx_queues())
-    }
-
-    // ========================================================================
-    // Security Features Display
-    // ========================================================================
-
-    /// Returns whether a cryptographic engine is detected.
-    pub fn display_crypto_engine(&self) -> String {
-        Self::format_bool(self.crypto_engine, self.soc.has_crypto_engine())
-    }
-
-    /// Returns whether AES hardware acceleration is detected.
-    pub fn display_aes(&self) -> String {
-        Self::format_bool(self.aes, self.soc.has_aes_acceleration())
-    }
-
-    /// Returns whether SHA hardware acceleration is detected.
-    pub fn display_sha(&self) -> String {
-        Self::format_bool(self.sha, self.soc.has_sha_acceleration())
-    }
-
-    /// Returns whether a hardware True Random Number Generator (TRNG) is detected.
-    pub fn display_trng(&self) -> String {
-        Self::format_bool(self.trng, self.soc.has_trng())
-    }
-
-    /// Returns whether Secure Boot is enabled.
-    pub fn display_secure_boot(&self) -> String {
-        Self::format_bool(self.secure_boot, self.soc.has_secure_boot())
-    }
-
-    /// Returns whether ARM TrustZone (TEE) is available.
-    pub fn display_trustzone(&self) -> String {
-        Self::format_bool(self.trustzone, self.soc.has_trustzone())
-    }
-
-    // ========================================================================
-    // Internal Presentation Helpers
-    // ========================================================================
-
-    /// Formats a generic value for the UI, flagging unexpected values with a red exclamation mark.
-    fn format_value<T: PartialEq + std::fmt::Display>(actual: T, expected: T) -> String {
-        if actual != expected {
-            format!("{actual} ❗")
-        } else {
-            actual.to_string()
-        }
-    }
-
-    /// Formats a boolean capability for the UI ("✓" / "✗"), flagging unexpected values.
-    fn format_bool(actual: bool, expected: bool) -> String {
-        Self::format_value(
-            if actual { "✓" } else { "✗" },
-            if expected { "✓" } else { "✗" },
-        )
     }
 
     // ========================================================================
