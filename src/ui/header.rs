@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use super::components::section_block;
-use crate::app::{HostInfo, SystemStats};
+use crate::platform::{HostInfo, SystemStats};
 
 /// Renders the header containing app version and host/system stats.
 pub fn draw(f: &mut Frame, area: Rect, host_info: &HostInfo, system_stats: &SystemStats) {

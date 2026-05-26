@@ -1,7 +1,6 @@
 mod app;
-mod conntrack;
+mod network;
 mod platform;
-mod topology;
 mod ui;
 
 use anyhow::Result;

@@ -1,25 +1,8 @@
-use crate::conntrack::{self, ConntrackStats};
-use crate::platform::{AccelerationStatus, HardwareInfo};
-use crate::topology::Topology;
+use crate::network::conntrack::{self, ConntrackStats};
+use crate::network::topology::Topology;
+use crate::platform::{AccelerationStatus, HardwareInfo, HostInfo, SystemStats};
 use ratatui::widgets::TableState;
 use sysinfo::System;
-
-/// Contains static host identifires that do not change during runtime.
-#[derive(Default, Debug)]
-pub struct HostInfo {
-    pub hostname: String,
-    pub os_version: String,
-}
-
-/// Contains dynamic system performance metric updated periodically.
-#[derive(Default, Debug)]
-pub struct SystemStats {
-    pub uptime_days: u64,
-    pub uptime_hours: u64,
-    pub cpu_usage: f32,
-    pub used_ram_mb: u64,
-    pub total_ram_mb: u64,
-}
 
 /// Application state.
 pub struct App {
@@ -104,23 +87,18 @@ impl App {
 
     /// Updates the application state. Called on every tick of the event loop.
     pub fn on_tick(&mut self) {
-        // Refresh CPU and memory hardware metrics.
-        self.sys.refresh_cpu_usage();
-        self.sys.refresh_memory();
+        // Delegate system metrics update to the domain struct
+        self.system_stats.update(&mut self.sys);
 
-        // Calculate and format system statistics for the UI view.
-        let uptime_secs = System::uptime();
-        self.system_stats.uptime_days = uptime_secs / 86400;
-        self.system_stats.uptime_hours = (uptime_secs % 86400) / 3600;
-
-        self.system_stats.cpu_usage = self.sys.global_cpu_usage();
-        self.system_stats.used_ram_mb = self.sys.used_memory() / 1024 / 1024;
-        self.system_stats.total_ram_mb = self.sys.total_memory() / 1024 / 1024;
-
-        // Fall back to default stats if fetching fails (e.g., non-Linux platform).
+        // Fetch network connections
         self.conntrack_stats = conntrack::get_stats(&self.topology).unwrap_or_default();
 
-        // Adjust selection index if the connection count decreased below the current selection.
+        // Validate table selection boundaries
+        self.validate_table_bounds();
+    }
+
+    /// Ensures the table selection index remains valid when connections count changes.
+    fn validate_table_bounds(&mut self) {
         if let Some(selected) = self.table_state.selected() {
             let conn_count = self.conntrack_stats.connections.len();
             if conn_count == 0 {

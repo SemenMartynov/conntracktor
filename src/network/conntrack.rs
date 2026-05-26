@@ -1,4 +1,4 @@
-use crate::topology::{EndpointType, Topology};
+use super::topology::{EndpointType, Topology};
 use ratatui::style::Color;
 use std::fs;
 use std::fs::File;

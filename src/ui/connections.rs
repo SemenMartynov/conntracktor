@@ -8,7 +8,7 @@ use ratatui::{
 
 use super::components::section_block;
 use crate::app::App;
-use crate::conntrack::OffloadStatus;
+use crate::network::conntrack::OffloadStatus;
 
 /// Renders the active connections table widget.
 /// Needs `&mut App` to mutate `table_state` and calculate `page_size`.
