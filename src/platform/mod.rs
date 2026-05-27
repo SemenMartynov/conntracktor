@@ -1,4 +1,5 @@
 mod accelerator;
+mod ethtool;
 mod hardware;
 mod soc;
 pub mod system;

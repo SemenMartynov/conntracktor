@@ -1,4 +1,5 @@
 use super::SocModel;
+use crate::platform::ethtool::{self, NicFeature};
 use std::fs;
 use std::path::Path;
 use sysinfo::{CpuRefreshKind, Networks, RefreshKind, System};
@@ -70,11 +71,10 @@ impl HardwareInfo {
             // Dynamic Networking Feature Checks combined with standard SoC limits
             ppe_count: soc.ppe_count().max(Self::count_platform_devices("ppe")),
             wed_count: soc.wed_count().max(Self::count_platform_devices("wed")),
-            rss: Self::check_nic_feature(&main_iface, "rx-hashing")
-                || Self::check_nic_feature(&main_iface, "rx-vlan-hw-parse"),
-            checksum_offload: Self::check_nic_feature(&main_iface, "tx-checksum")
-                || Self::check_nic_feature(&main_iface, "rx-checksum"),
-            tso: Self::check_nic_feature(&main_iface, "tcp-segmentation-offload"),
+            rss: Self::check_nic_feature(&main_iface, NicFeature::Rss),
+            checksum_offload: Self::check_nic_feature(&main_iface, NicFeature::TxChecksum)
+                || Self::check_nic_feature(&main_iface, NicFeature::RxChecksum),
+            tso: Self::check_nic_feature(&main_iface, NicFeature::Tso),
             multi_rx: Self::check_multi_rx(&main_iface),
 
             // Dynamic Security Feature Checks
@@ -170,6 +170,7 @@ impl HardwareInfo {
         if let Ok(content) = fs::read_to_string("/sys/kernel/debug/clk/clk_summary") {
             for line in content.lines().skip(2) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
+
                 if !parts.is_empty() && TARGET_CLOCKS.contains(&parts[0]) {
                     // Find the first number in the line (skipping the clock name) that
                     // resembles a valid frequency (i.e., >= 100 MHz / 100_000_000 Hz).
@@ -225,6 +226,7 @@ impl HardwareInfo {
         "[Placeholder]".to_string()
     }
 
+    /// Counts instances of a specific hardware block (like PPE or WED) ensuring strict naming boundaries.
     fn count_platform_devices(keyword: &str) -> usize {
         let count_in_dir = |path: &str| -> usize {
             let mut found = 0;
@@ -296,9 +298,13 @@ impl HardwareInfo {
             .map(|s| s.to_string())
     }
 
-    /// Placeholder: Verifies hardware offload status for a given network feature.
-    fn check_nic_feature(_iface: &Option<String>, _feature: &str) -> bool {
-        false
+    /// Internal wrapper to execute the ethtool ioctl query safely.
+    fn check_nic_feature(iface: &Option<String>, feature: NicFeature) -> bool {
+        if let Some(if_name) = iface {
+            ethtool::check_feature(if_name, feature)
+        } else {
+            false
+        }
     }
 
     /// Checks whether multi-queue RX ring buffers are present for the primary interface.
